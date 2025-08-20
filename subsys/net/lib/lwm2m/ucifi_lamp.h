@@ -1,0 +1,62 @@
+/**
+ * @file ucifi_lamp.h
+ * @brief Resource IDs for uCIFI Outdoor Lamp Controller object (ID: 3416)
+ *
+ * SPDX-License-Identifier: Apache-2.0
+ */
+#ifndef __LWM2M_UCIFI_LAMP__
+#define __LWM2M_UCIFI_LAMP__
+
+#define UCIFI_OBJECT_LAMP_ID              3416
+
+/* uCIFI Lamp resource IDs */
+#define UCIFI_LAMP_COMMAND_RID            	       1
+#define UCIFI_LAMP_COMMAND_IN_ACTION_RID           2
+#define UCIFI_LAMP_DIMMING_LEVEL_RID      	       3
+#define UCIFI_LAMP_DEFAULT_DIMMING_LEVEL_RID       4
+#define UCIFI_LAMP_FAILURE_RID         		       5
+#define UCIFI_LAMP_LAMP_FAILURE_REASON_RID         6
+#define UCIFI_LAMP_CONTROL_GEAR_FAILURE_RID        7
+#define UCIFI_LAMP_CONTROL_GEAR_FAILURE_REASON_RID 8
+#define UCIFI_LAMP_RELAY_FAILURE_RID               9
+#define UCIFI_LAMP_DAY_BURNER_RID                  10
+#define UCIFI_LAMP_CYCLING_FAILURE_RID             11
+#define UCIFI_LAMP_CONTROL_GEAR_COMM_FAILURE_RID   12
+#define UCIFI_LAMP_SCHEDULER_ID_RID                13
+#define UCIFI_LAMP_INVALID_SCHEDULER_RID           14
+#define UCIFI_LAMP_OPERATING_HOURS_RID  	       15
+#define UCIFI_LAMP_RESET_HOURS_RID        	       16
+#define UCIFI_LAMP_ON_TIMESTAMP_RID                17
+#define UCIFI_LAMP_SWITCH_COUNTER_RID              18
+#define UCIFI_LAMP_SWITCH_COUNTER_RESET_RID        19
+#define UCIFI_LAMP_CG_START_COUNTER_RID            20
+#define UCIFI_LAMP_CG_TEMPERATURE_RID              21
+#define UCIFI_LAMP_CG_THERMAL_DERATING_RID         22
+#define UCIFI_LAMP_CG_THERMAL_DERATING_COUNTER_RID 23
+#define UCIFI_LAMP_CG_THERMAL_DERATING_RESET_RID   24
+#define UCIFI_LAMP_CG_THERMAL_SHUTDOWN_RID         25
+#define UCIFI_LAMP_CG_THERMAL_SHUTDOWN_COUNTER_RID 26
+#define UCIFI_LAMP_CG_THERMAL_SHUTDOWN_RESET_RID   27
+#define UCIFI_LAMP_OUTPUT_PORT_RID                 28
+#define UCIFI_LAMP_STANDBY_MODE_RID                29
+#define UCIFI_LAMP_CONSTANT_LIGHT_OUTPUT_RID       30
+#define UCIFI_LAMP_CLEANING_FACTOR_ENABLED_RID     31
+#define UCIFI_LAMP_CLEANING_PERIOD_RID             32
+#define UCIFI_LAMP_INITIAL_CLEANING_FACTOR_RID     33
+#define UCIFI_LAMP_CLEANING_DATE_RID               34
+#define UCIFI_LAMP_CONTROL_TYPE_RID                35
+#define UCIFI_LAMP_NOMINAL_WATTAGE_RID             36
+#define UCIFI_LAMP_MIN_DIMMING_LEVEL_RID           37
+#define UCIFI_LAMP_MIN_WATTAGE_RID                 38
+#define UCIFI_LAMP_COLOR_TEMP_CMD_RID              39
+#define UCIFI_LAMP_COLOR_TEMP_ACTUAL_RID           40
+#define UCIFI_LAMP_VIRTUAL_POWER_OUTPUT_RID        41
+#define UCIFI_LAMP_VOLTAGE_MAX_DIM_RID             42
+#define UCIFI_LAMP_VOLTAGE_MIN_DIM_RID             43
+#define UCIFI_LAMP_SOURCE_VOLTAGE_RID              44
+#define UCIFI_LAMP_SOURCE_CURRENT_RID              45
+#define UCIFI_LAMP_SOURCE_POWER_RID                46
+#define UCIFI_LAMP_SOURCE_ENERGY_RID               47
+
+#endif /* __LWM2M_UCIFI_LAMP__ */
+

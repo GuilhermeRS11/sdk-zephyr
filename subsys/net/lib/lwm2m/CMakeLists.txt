@@ -123,7 +123,13 @@ zephyr_library_sources_ifdef(CONFIG_LWM2M_IPSO_FILLING_SENSOR
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_BATTERY
     ucifi_battery.c
     )
-
+zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_LAMP
+    ucifi_lamp.c
+    )
+zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_ELECTRICAL_MONITOR
+    ucifi_electrical_monitor.c
+)
+	
 # Shell commands
 zephyr_library_sources_ifdef(CONFIG_LWM2M_SHELL
     lwm2m_shell.c

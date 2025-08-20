@@ -25,6 +25,40 @@ config LWM2M_UCIFI_BATTERY_INSTANCE_COUNT
 
 endif # LWM2M_UCIFI_BATTERY
 
+menuconfig LWM2M_UCIFI_LAMP
+    bool "uCIFI Lamp Controller Object (ID 3416)"
+    help
+    	The uCIFI lamp object provides attributes to outdoor lamp controller
+
+if LWM2M_UCIFI_LAMP
+
+config LWM2M_UCIFI_LAMP_INSTANCE_COUNT
+    int "Maximum # of uCIFI Lamp Controller object instances"
+    default 1
+    help
+      This setting defines how many uCIFI Lamp Controller instances
+      are supported by the LwM2M client.
+
+endif # LWM2M_UCIFI_LAMP
+
+menuconfig LWM2M_UCIFI_ELECTRICAL_MONITOR
+    bool "uCIFI Electrical Monitor Object (ID 3418)"
+    help
+      Enables the uCIFI Electrical Monitor object for energy monitoring,
+      including voltage, current, power factor, energy consumption and
+      detection of electrical anomalies.
+
+if LWM2M_UCIFI_ELECTRICAL_MONITOR
+
+config LWM2M_UCIFI_ELECTRICAL_MONITOR_INSTANCE_COUNT
+    int "Maximum # of uCIFI Electrical Monitor object instances"
+    default 1
+    help
+      This setting defines how many 3418 object instances are supported.
+
+endif # LWM2M_UCIFI_ELECTRICAL_MONITOR
+
+
 menuconfig LWM2M_UCIFI_LPWAN
 	bool "uCIFI LPWAN (3412) Support"
 	help
@@ -98,7 +132,7 @@ config LWM2M_UCIFI_LPWAN_MULTICAST_GRP_KEY_MAX
 	  This value sets the maximum number of security key (e.g. AES128) to
 	  be shared with other members to be part of a multicast group that can
 	  be stored in this object.
-
+	  
 endif # LWM2M_UCIFI_LPWAN
 
 endif # LWM2M_UCIFI_SUPPORT
