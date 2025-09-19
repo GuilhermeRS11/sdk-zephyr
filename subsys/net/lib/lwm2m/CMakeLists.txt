@@ -120,6 +120,9 @@ zephyr_library_sources_ifdef(CONFIG_LWM2M_IPSO_VOLTAGE_SENSOR
 zephyr_library_sources_ifdef(CONFIG_LWM2M_IPSO_FILLING_SENSOR
     ipso_filling_sensor.c
     )
+zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_DEVICE_EXTENSION
+    ucifi_device_extension.c
+)
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_BATTERY
     ucifi_battery.c
     )
