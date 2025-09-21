@@ -27,57 +27,33 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define DE_VERSION_MINOR 0
 
 #define MAX_INSTANCE_COUNT CONFIG_LWM2M_UCIFI_DEVICE_EXTENSION_INSTANCE_COUNT
-#define DEVICE_EXTENSION_MAX_ID 48  //TODO: ask what is this for
+#define DEVICE_EXTENSION_MAX_ID 48
 #define RESOURCE_INSTANCE_COUNT (DEVICE_EXTENSION_MAX_ID)
-
+// String length definitions for resource state variables
+#define GTIN_MODEL_NUMBER_STRLEN      32
+#define MANUFACTURER_STRLEN           32
+#define USER_GIVEN_NAME_STRLEN        32
+#define ASSET_ID_STRLEN                32
+#define ADDITIONAL_FIRMWARE_INFO_STRLEN 64
+#define DST_OFFSET_STRLEN               8
 /* Resource state variables */
 
+static char gtin_model_number[MAX_INSTANCE_COUNT][GTIN_MODEL_NUMBER_STRLEN];
+static char manufacturer[MAX_INSTANCE_COUNT][MANUFACTURER_STRLEN];
+static char user_given_name[MAX_INSTANCE_COUNT][USER_GIVEN_NAME_STRLEN];
+static char asset_id[MAX_INSTANCE_COUNT][ASSET_ID_STRLEN];
+static int64_t installation_date[MAX_INSTANCE_COUNT];
+static bool software_update[MAX_INSTANCE_COUNT];
+static bool maintenance[MAX_INSTANCE_COUNT];
+// No data for config reset (execute only)
+static uint16_t device_operating_hours[MAX_INSTANCE_COUNT];
+static char additional_firmware_info[MAX_INSTANCE_COUNT][ADDITIONAL_FIRMWARE_INFO_STRLEN];
+static int64_t dst_start[MAX_INSTANCE_COUNT];
+static int64_t dst_end[MAX_INSTANCE_COUNT];
+static char dst_offset[MAX_INSTANCE_COUNT][DST_OFFSET_STRLEN];
+static uint16_t uptime[MAX_INSTANCE_COUNT];
+static bool rfd_device[MAX_INSTANCE_COUNT];
 
-/*static int8_t command[MAX_INSTANCE_COUNT];
-static int8_t command_in_action[MAX_INSTANCE_COUNT];
-static uint8_t dimming_level[MAX_INSTANCE_COUNT];
-static int8_t default_dimming_level[MAX_INSTANCE_COUNT];
-static bool failure[MAX_INSTANCE_COUNT];
-static int32_t lamp_failure_reason[MAX_INSTANCE_COUNT];
-static int32_t lamp_failure_reason[MAX_INSTANCE_COUNT]; //why duped?
-static bool control_gear_failure[MAX_INSTANCE_COUNT];
-static int32_t control_gear_failure_reason[MAX_INSTANCE_COUNT];
-static bool relay_failure[MAX_INSTANCE_COUNT];
-static bool day_burner[MAX_INSTANCE_COUNT];
-static bool cycling_failure[MAX_INSTANCE_COUNT];
-static bool control_gear_comm_failure[MAX_INSTANCE_COUNT];
-static int32_t scheduler_id[MAX_INSTANCE_COUNT]; 
-static bool invalid_scheduler[MAX_INSTANCE_COUNT];
-static double lamp_operating_hours[MAX_INSTANCE_COUNT];
-static int64_t lamp_on_timestamp[MAX_INSTANCE_COUNT];
-static int32_t lamp_switch_counter[MAX_INSTANCE_COUNT];
-static int32_t control_gear_start_counter[MAX_INSTANCE_COUNT];
-static double control_gear_temperature[MAX_INSTANCE_COUNT];
-static bool control_gear_thermal_derating[MAX_INSTANCE_COUNT];
-static int32_t control_gear_thermal_derating_counter[MAX_INSTANCE_COUNT];
-static bool control_gear_thermal_shutdown[MAX_INSTANCE_COUNT];
-static int32_t control_gear_thermal_shutdown_counter[MAX_INSTANCE_COUNT];
-static int32_t output_port[MAX_INSTANCE_COUNT];
-static bool standby_mode[MAX_INSTANCE_COUNT];
-static bool constant_light_output[MAX_INSTANCE_COUNT];
-static bool cleaning_factor_enabled[MAX_INSTANCE_COUNT];
-static int32_t cleaning_period[MAX_INSTANCE_COUNT];
-static int32_t initial_cleaning_factor[MAX_INSTANCE_COUNT];
-static int64_t cleaning_date[MAX_INSTANCE_COUNT];
-static int32_t control_type[MAX_INSTANCE_COUNT];
-static int32_t nominal_wattage[MAX_INSTANCE_COUNT];
-static int32_t min_dimming_level[MAX_INSTANCE_COUNT];
-static int32_t min_lamp_wattage[MAX_INSTANCE_COUNT];
-static int32_t color_temp_cmd[MAX_INSTANCE_COUNT];
-static int32_t color_temp_actual[MAX_INSTANCE_COUNT];
-static int32_t virtual_power_output[MAX_INSTANCE_COUNT];
-static double voltage_max_dim[MAX_INSTANCE_COUNT];
-static double voltage_min_dim[MAX_INSTANCE_COUNT];
-static double light_source_voltage[MAX_INSTANCE_COUNT];
-static double light_source_current[MAX_INSTANCE_COUNT];
-static double light_source_power[MAX_INSTANCE_COUNT];
-static double light_source_energy[MAX_INSTANCE_COUNT];
-*/
 
 static struct lwm2m_engine_obj device_extension;
 static struct lwm2m_engine_obj_field fields[] = {
@@ -98,237 +74,122 @@ static struct lwm2m_engine_obj_field fields[] = {
     OBJ_FIELD_DATA(UCIFI_DE_RFD_DEVICE_RID, R_OPT, BOOL),
 };
 
-// static struct lwm2m_engine_obj_inst inst[MAX_INSTANCE_COUNT];
-// static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][LAMP_MAX_ID];
-// static struct lwm2m_engine_res_inst res_inst[MAX_INSTANCE_COUNT][RESOURCE_INSTANCE_COUNT];
+static struct lwm2m_engine_obj_inst inst[MAX_INSTANCE_COUNT];
+static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][DEVICE_EXTENSION_MAX_ID];
+static struct lwm2m_engine_res_inst res_inst[MAX_INSTANCE_COUNT][RESOURCE_INSTANCE_COUNT];
 
-// static int reset_lamp_hours_cb(uint16_t obj_inst_id, uint8_t *args, uint16_t args_len)
-// {
-// 	for (int i = 0; i < MAX_INSTANCE_COUNT; i++) {
-// 		if (inst[i].obj && inst[i].obj_inst_id == obj_inst_id) {
-// 			lamp_operating_hours[i] = 0;			
-// 			lwm2m_notify_observer(UCIFI_OBJECT_LAMP_ID, obj_inst_id, UCIFI_LAMP_OPERATING_HOURS_RID);
-// 			LOG_INF("Lamp operating hours reset for instance %d", obj_inst_id);
-// 			return 0;
-// 		}
-// 	}
-// 	return -ENOENT;
-// }
+/////// Execute fields Callbacks ////////
 
-// static int reset_lamp_switch_counter_cb(uint16_t obj_inst_id, uint8_t *args, uint16_t args_len)
-// {
-// 	for (int i = 0; i < MAX_INSTANCE_COUNT; i++) {
-// 		if (inst[i].obj && inst[i].obj_inst_id == obj_inst_id) {
-// 			lamp_switch_counter[i] = 0;
-// 			lwm2m_notify_observer(UCIFI_OBJECT_LAMP_ID, obj_inst_id, UCIFI_LAMP_SWITCH_COUNTER_RID);
-// 			LOG_INF("Lamp switch counter reset for instance %d", obj_inst_id);
-// 			return 0;
-// 		}
-// 	}
-// 	return -ENOENT;
-// }
+static int device_extension_reset_config_cb(uint16_t obj_inst_id, uint8_t *args, uint16_t args_len) {
+    for (int i = 0; i < MAX_INSTANCE_COUNT; i++) {
+        if (inst[i].obj && inst[i].obj_inst_id == obj_inst_id) {
 
-// static int reset_thermal_derating_cb(uint16_t obj_inst_id, uint8_t *args, uint16_t args_len)
-// {
-// 	for (int i = 0; i < MAX_INSTANCE_COUNT; i++) {
-// 		if (inst[i].obj && inst[i].obj_inst_id == obj_inst_id) {
-// 			control_gear_thermal_derating_counter[i] = 0;
-// 			lwm2m_notify_observer(UCIFI_OBJECT_LAMP_ID, obj_inst_id, UCIFI_LAMP_CG_THERMAL_DERATING_COUNTER_RID);
-// 			LOG_INF("Thermal derating counter reset for instance %d", obj_inst_id);
-// 			return 0;
-// 		}
-// 	}
-// 	return -ENOENT;
-// }
+            // TODO: what configs to reset?
 
-// static int reset_shutdown_counter_cb(uint16_t obj_inst_id, uint8_t *args, uint16_t args_len)
-// {
-// 	for (int i = 0; i < MAX_INSTANCE_COUNT; i++) {
-// 		if (inst[i].obj && inst[i].obj_inst_id == obj_inst_id) {
-// 			control_gear_thermal_shutdown_counter[i] = 0;
-// 			lwm2m_notify_observer(UCIFI_OBJECT_LAMP_ID, obj_inst_id, UCIFI_LAMP_CG_THERMAL_SHUTDOWN_COUNTER_RID);
-// 			LOG_INF("Thermal shutdown counter reset for instance %d", obj_inst_id);
-// 			return 0;
-// 		}
-// 	}
-// 	return -ENOENT;
-// }
+            lwm2m_notify_observer(UCIFI_OBJECT_DEVICE_EXTENSION_ID, obj_inst_id, UCIFI_DE_CONFIG_RST_RID);
+            LOG_INF("Configurations reseted for instance %d", obj_inst_id);
+            return 0;
+        }
+    }
 
-// static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
-// {
-//     int index = 0, i = 0, j = 0;
+    return -ENOENT;
+}
 
-//     if (obj_inst_id >= MAX_INSTANCE_COUNT) {
-//         LOG_ERR("Invalid instance %d", obj_inst_id);
-//         return NULL;
-//     }
+/////// END Execute fields Callbacks END ////////
 
-//     if (inst[index].obj != NULL) {
-//         LOG_ERR("Instance %d already exists", obj_inst_id);
-//         return NULL;
-//     }
+/////// Create Obj Instance ///////
 
-//     /* Set default values */
-//     command[index] = 0;
-//     command_in_action[index] = 0;
-//     dimming_level[index] = 100;
-//     failure[index] = false;
-//     lamp_failure_reason[index] = 0;
-//     control_gear_failure[index] = false;
-//     control_gear_failure_reason[index] = 0;
-//     relay_failure[index] = false;
-//     day_burner[index] = false;
-//     cycling_failure[index] = false;
-//     control_gear_comm_failure[index] = false;
-//     scheduler_id[index] = -1;
-//     invalid_scheduler[index] = false;
-//     lamp_on_timestamp[index] = 0;
-//     lamp_switch_counter[index] = 0;
-//     control_gear_start_counter[index] = 0;
-//     control_gear_temperature[index] = 25.0;
-//     control_gear_thermal_derating[index] = false;
-//     control_gear_thermal_derating_counter[index] = 0;
-//     control_gear_thermal_shutdown[index] = false;
-//     control_gear_thermal_shutdown_counter[index] = 0;
-//     output_port[index] = -1;
-//     standby_mode[index] = false;
-//     constant_light_output[index] = false;
-//     cleaning_factor_enabled[index] = false;
-//     cleaning_period[index] = 0;
-//     initial_cleaning_factor[index] = 100;
-//     cleaning_date[index] = 0;
-//     control_type[index] = 0;
-//     nominal_wattage[index] = 0;
-//     min_dimming_level[index] = 0;
-//     min_lamp_wattage[index] = 0;
-//     color_temp_cmd[index] = 2700;
-//     color_temp_actual[index] = 2700;
-//     virtual_power_output[index] = 100;
-//     voltage_max_dim[index] = 10.0;
-//     voltage_min_dim[index] = 0.0;
-//     light_source_voltage[index] = 0.0;
-//     light_source_current[index] = 0.0;
-//     light_source_power[index] = 0.0;
-//     light_source_energy[index] = 0.0;
+static struct lwm2m_engine_obj_inst *device_extension_create(uint16_t obj_inst_id) {
+    
+    int index = 0, i = 0, j = 0; // TODO: is it necessary to change i for diferent instances? is it ok to keep j and i = 0 always?
 
-//     (void)memset(res[index], 0, sizeof(res[index]));
-//     init_res_instance(res_inst[index], ARRAY_SIZE(res_inst[index]));
+    // check instance count bounds
+    if (obj_inst_id >= MAX_INSTANCE_COUNT) {
+        LOG_ERR("Invalid instance %d", obj_inst_id);
+        return NULL;
+    }
 
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_COMMAND_RID, res[index], i, res_inst[index], j,
-//                     &command[index], sizeof(command[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_COMMAND_IN_ACTION_RID, res[index], i, res_inst[index], j,
-//                     &command_in_action[index], sizeof(command_in_action[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_DIMMING_LEVEL_RID, res[index], i, res_inst[index], j,
-//                     &dimming_level[index], sizeof(dimming_level[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_DEFAULT_DIMMING_LEVEL_RID, res[index], i, res_inst[index], j,
-//                     &default_dimming_level[index], sizeof(default_dimming_level[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_FAILURE_RID, res[index], i, res_inst[index], j,
-//                     &failure[index], sizeof(failure[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_OPERATING_HOURS_RID, res[index], i, res_inst[index], j,
-//           	        &lamp_operating_hours[index], sizeof(double));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_LAMP_FAILURE_REASON_RID, res[index], i, res_inst[index], j,
-//                     &lamp_failure_reason[index], sizeof(lamp_failure_reason[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CONTROL_GEAR_FAILURE_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_failure[index], sizeof(control_gear_failure[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CONTROL_GEAR_FAILURE_REASON_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_failure_reason[index], sizeof(control_gear_failure_reason[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_RELAY_FAILURE_RID, res[index], i, res_inst[index], j,
-//                     &relay_failure[index], sizeof(relay_failure[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_DAY_BURNER_RID, res[index], i, res_inst[index], j,
-//                     &day_burner[index], sizeof(day_burner[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CYCLING_FAILURE_RID, res[index], i, res_inst[index], j,
-//                     &cycling_failure[index], sizeof(cycling_failure[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CONTROL_GEAR_COMM_FAILURE_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_comm_failure[index], sizeof(control_gear_comm_failure[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_SCHEDULER_ID_RID, res[index], i, res_inst[index], j,
-//                     &scheduler_id[index], sizeof(scheduler_id[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_INVALID_SCHEDULER_RID, res[index], i, res_inst[index], j,
-//                     &invalid_scheduler[index], sizeof(invalid_scheduler[index]));
-//     INIT_OBJ_RES_EXECUTE(UCIFI_LAMP_RESET_HOURS_RID, res[index], i, 
-// 		            reset_lamp_hours_cb);
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_ON_TIMESTAMP_RID, res[index], i, res_inst[index], j,
-//                     &lamp_on_timestamp[index], sizeof(lamp_on_timestamp[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_SWITCH_COUNTER_RID, res[index], i, res_inst[index], j,
-//                     &lamp_switch_counter[index], sizeof(lamp_switch_counter[index]));
-//     INIT_OBJ_RES_EXECUTE(UCIFI_LAMP_SWITCH_COUNTER_RESET_RID, res[index], i,
-//                     reset_lamp_switch_counter_cb);
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CG_START_COUNTER_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_start_counter[index], sizeof(control_gear_start_counter[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CG_TEMPERATURE_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_temperature[index], sizeof(control_gear_temperature[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CG_THERMAL_DERATING_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_thermal_derating[index], sizeof(control_gear_thermal_derating[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CG_THERMAL_DERATING_COUNTER_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_thermal_derating_counter[index], sizeof(control_gear_thermal_derating_counter[index]));
-//     INIT_OBJ_RES_EXECUTE(UCIFI_LAMP_CG_THERMAL_DERATING_RESET_RID, res[index], i,
-//                     reset_thermal_derating_cb);
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CG_THERMAL_SHUTDOWN_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_thermal_shutdown[index], sizeof(control_gear_thermal_shutdown[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CG_THERMAL_SHUTDOWN_COUNTER_RID, res[index], i, res_inst[index], j,
-//                     &control_gear_thermal_shutdown_counter[index], sizeof(control_gear_thermal_shutdown_counter[index]));
-//     INIT_OBJ_RES_EXECUTE(UCIFI_LAMP_CG_THERMAL_SHUTDOWN_RESET_RID, res[index], i,
-//                     reset_shutdown_counter_cb);
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_OUTPUT_PORT_RID, res[index], i, res_inst[index], j,
-//                     &output_port[index], sizeof(output_port[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_STANDBY_MODE_RID, res[index], i, res_inst[index], j,
-//                     &standby_mode[index], sizeof(standby_mode[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CONSTANT_LIGHT_OUTPUT_RID, res[index], i, res_inst[index], j,
-//                     &constant_light_output[index], sizeof(constant_light_output[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CLEANING_FACTOR_ENABLED_RID, res[index], i, res_inst[index], j,
-//                     &cleaning_factor_enabled[index], sizeof(cleaning_factor_enabled[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CLEANING_PERIOD_RID, res[index], i, res_inst[index], j,
-//                     &cleaning_period[index], sizeof(cleaning_period[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_INITIAL_CLEANING_FACTOR_RID, res[index], i, res_inst[index], j,
-//                     &initial_cleaning_factor[index], sizeof(initial_cleaning_factor[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CLEANING_DATE_RID, res[index], i, res_inst[index], j,
-//                     &cleaning_date[index], sizeof(cleaning_date[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_CONTROL_TYPE_RID, res[index], i, res_inst[index], j,
-//                     &control_type[index], sizeof(control_type[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_NOMINAL_WATTAGE_RID, res[index], i, res_inst[index], j,
-//                     &nominal_wattage[index], sizeof(nominal_wattage[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_MIN_DIMMING_LEVEL_RID, res[index], i, res_inst[index], j,
-//                     &min_dimming_level[index], sizeof(min_dimming_level[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_MIN_WATTAGE_RID, res[index], i, res_inst[index], j,
-//                     &min_lamp_wattage[index], sizeof(min_lamp_wattage[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_COLOR_TEMP_CMD_RID, res[index], i, res_inst[index], j,
-//                     &color_temp_cmd[index], sizeof(color_temp_cmd[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_COLOR_TEMP_ACTUAL_RID, res[index], i, res_inst[index], j,
-//                     &color_temp_actual[index], sizeof(color_temp_actual[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_VIRTUAL_POWER_OUTPUT_RID, res[index], i, res_inst[index], j,
-//                     &virtual_power_output[index], sizeof(virtual_power_output[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_VOLTAGE_MAX_DIM_RID, res[index], i, res_inst[index], j,
-//                     &voltage_max_dim[index], sizeof(voltage_max_dim[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_VOLTAGE_MIN_DIM_RID, res[index], i, res_inst[index], j,
-//                     &voltage_min_dim[index], sizeof(voltage_min_dim[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_SOURCE_VOLTAGE_RID, res[index], i, res_inst[index], j,
-//                     &light_source_voltage[index], sizeof(light_source_voltage[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_SOURCE_CURRENT_RID, res[index], i, res_inst[index], j,
-//                     &light_source_current[index], sizeof(light_source_current[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_SOURCE_POWER_RID, res[index], i, res_inst[index], j,
-//                     &light_source_power[index], sizeof(light_source_power[index]));
-//     INIT_OBJ_RES_DATA(UCIFI_LAMP_SOURCE_ENERGY_RID, res[index], i, res_inst[index], j,
-//                     &light_source_energy[index], sizeof(light_source_energy[index]));
+    index = obj_inst_id;
 
-//     inst[index].resources = res[index];
-//     inst[index].resource_count = i;
+    // check if object already exists
+    if (inst[index].obj != NULL) {
+        LOG_ERR("Instance %d already exists", obj_inst_id);
+        return NULL;
+    }
 
-//     LOG_DBG("Created uCIFI Lamp instance: %d", obj_inst_id);
-//     return &inst[index];
-// }
+    /* set default values */
+    gtin_model_number[index][0] = '\0';
+    manufacturer[index][0] = '\0';
+    user_given_name[index][0] = '\0';
+    asset_id[index][0] = '\0';
+    installation_date[index] = 0;
+    software_update[index] = false;
+    maintenance[index] = false;
+    device_operating_hours[index] = 0;
+    additional_firmware_info[index][0] = '\0';
+    dst_start[index] = 0;
+    dst_end[index] = 0;
+    dst_offset[index][0] = '\0';
+    uptime[index] = 0;
+    rfd_device[index] = false;
 
-// static int ucifi_lamp_init(void)
-// {
-//     lamp.obj_id = UCIFI_OBJECT_LAMP_ID;
-//     lamp.version_major = LAMP_VERSION_MAJOR;
-//     lamp.version_minor = LAMP_VERSION_MINOR;
-//     lamp.is_core = true;
-//     lamp.fields = fields;
-//     lamp.field_count = ARRAY_SIZE(fields);
-//     lamp.max_instance_count = MAX_INSTANCE_COUNT;
-//     lamp.create_cb = lamp_create;
-//     lwm2m_register_obj(&lamp);
+    (void)memset(res[index], 0, sizeof(res[index]));
+    init_res_instance(res_inst[index], ARRAY_SIZE(res_inst[index]));
 
-//     return 0;
-// }
+    INIT_OBJ_RES_DATA(UCIFI_DE_GTIN_MODEL_NUMBER_RID, res[index], i, res_inst[index], j,
+                    &gtin_model_number[index], sizeof(gtin_model_number[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_MANUFACTURER_RID, res[index], i, res_inst[index], j,
+                    &manufacturer[index], sizeof(manufacturer[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_USER_GIVEN_NAME_RID, res[index], i, res_inst[index], j,
+                    &user_given_name[index], sizeof(user_given_name[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_ASSET_ID_RID, res[index], i, res_inst[index], j,
+                    &asset_id[index], sizeof(asset_id[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_INSTALLATION_DATE_RID, res[index], i, res_inst[index], j,
+                    &installation_date[index], sizeof(installation_date[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_SOFTWARE_UPDATE_RID, res[index], i, res_inst[index], j,
+                    &software_update[index], sizeof(software_update[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_MAINTENANCE_RID, res[index], i, res_inst[index], j,
+                    &maintenance[index], sizeof(maintenance[index]));
+    INIT_OBJ_RES_EXECUTE(UCIFI_DE_CONFIG_RST_RID, res[index], i, 
+                    device_extension_reset_config_cb);
+    INIT_OBJ_RES_DATA(UCIFI_DE_DEVICE_OPERATING_HOURS_RID, res[index], i, res_inst[index], j,
+                    &device_operating_hours[index], sizeof(device_operating_hours[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_ADDITIONAL_FIRMWARE_INFO_RID, res[index], i, res_inst[index], j,
+                    &additional_firmware_info[index], sizeof(additional_firmware_info[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_DST_START_RID, res[index], i, res_inst[index], j,
+                    &dst_start[index], sizeof(dst_start[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_DST_END_RID, res[index], i, res_inst[index], j,
+                    &dst_end[index], sizeof(dst_end[index]));   
+    INIT_OBJ_RES_DATA(UCIFI_DE_DST_OFFSET_RID, res[index], i, res_inst[index], j,
+                    &dst_offset[index], sizeof(dst_offset[index])); 
+    INIT_OBJ_RES_DATA(UCIFI_DE_UPTIME_RID, res[index], i, res_inst[index], j,
+                    &uptime[index], sizeof(uptime[index]));
+    INIT_OBJ_RES_DATA(UCIFI_DE_RFD_DEVICE_RID, res[index], i, res_inst[index], j,
+                    &rfd_device[index], sizeof(rfd_device[index]));
 
-// SYS_INIT(ucifi_lamp_init, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);
+
+    inst[index].resources = res[index];
+    inst[index].resource_count = i;
+
+    LOG_DBG("Created uCIFI Device Extension instance: %d", obj_inst_id);
+    return &inst[index];
+}
+
+/////// END Create Obj Instance END ///////
+
+static int ucifi_device_extension_init(void)
+{
+    device_extension.obj_id = UCIFI_OBJECT_DEVICE_EXTENSION_ID;
+    device_extension.version_major = DE_VERSION_MAJOR;
+    device_extension.version_minor = DE_VERSION_MINOR;
+    device_extension.is_core = true;
+    device_extension.fields = fields;
+    device_extension.field_count = ARRAY_SIZE(fields);
+    device_extension.max_instance_count = MAX_INSTANCE_COUNT;
+    device_extension.create_cb = device_extension_create;
+    lwm2m_register_obj(&device_extension);
+
+    return 0;
+}
+
+SYS_INIT(ucifi_device_extension_init, APPLICATION, CONFIG_KERNEL_INIT_PRIORITY_DEFAULT);

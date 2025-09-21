@@ -26,6 +26,5 @@
 #define UCIFI_DE_UPTIME_RID                        14
 #define UCIFI_DE_RFD_DEVICE_RID                    15
 
-
 #endif /* __LWM2M_UCIFI_DEVICE_EXTENSION__ */
 
