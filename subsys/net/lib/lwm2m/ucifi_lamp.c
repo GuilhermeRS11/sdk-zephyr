@@ -37,7 +37,6 @@ static uint8_t dimming_level[MAX_INSTANCE_COUNT];
 static int8_t default_dimming_level[MAX_INSTANCE_COUNT];
 static bool failure[MAX_INSTANCE_COUNT];
 static int32_t lamp_failure_reason[MAX_INSTANCE_COUNT];
-static int32_t lamp_failure_reason[MAX_INSTANCE_COUNT];
 static bool control_gear_failure[MAX_INSTANCE_COUNT];
 static int32_t control_gear_failure_reason[MAX_INSTANCE_COUNT];
 static bool relay_failure[MAX_INSTANCE_COUNT];
