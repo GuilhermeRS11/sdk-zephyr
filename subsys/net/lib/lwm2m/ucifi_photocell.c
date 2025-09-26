@@ -31,11 +31,11 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define RESOURCE_INSTANCE_COUNT (PHOTOCELL_MAX_ID)
 
 /* Resource state variables */
-static float on_lux_level[MAX_INSTANCE_COUNT];
-static float off_lux_level[MAX_INSTANCE_COUNT]; 
+static double on_lux_level[MAX_INSTANCE_COUNT];
+static double off_lux_level[MAX_INSTANCE_COUNT]; 
 static bool status[MAX_INSTANCE_COUNT];
 static int64_t timestamp[MAX_INSTANCE_COUNT];
-static float fractional_timestamp[MAX_INSTANCE_COUNT];
+static double fractional_timestamp[MAX_INSTANCE_COUNT];
 
 static struct lwm2m_engine_obj photocell;
 static struct lwm2m_engine_obj_field fields[] = {
