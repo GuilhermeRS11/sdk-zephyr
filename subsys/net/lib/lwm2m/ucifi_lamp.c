@@ -186,17 +186,38 @@ static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
 {
     int index = 0, i = 0, j = 0;
 
-    if (obj_inst_id >= MAX_INSTANCE_COUNT) {
-        LOG_ERR("Invalid instance %d", obj_inst_id);
-        return NULL;
-    }
-
+    
     if (inst[index].obj != NULL) {
         LOG_ERR("Instance %d already exists", obj_inst_id);
         return NULL;
     }
 
-    /* Set default values */
+    // TODO: implementar uma checagem mais robusta de instâncias já existentes
+    
+    // for (index = 0; index < MAX_INSTANCE_COUNT; index++) {
+    // if (inst[index].obj && inst[index].obj_inst_id == obj_inst_id) {
+    //     LOG_ERR("Can not create instance - "
+    //         "already existing: %u",
+    //         obj_inst_id);
+    //     return NULL;
+    //     }
+    // }
+    // exemplo de código encontrado no ipso_voltage_sensor.c
+    
+    // TODO: Faltou incrementar o index para o próximo disponível
+    // for (index = 0; index < MAX_INSTANCE_COUNT; index++) {
+        // 	if (!inst[index].obj) {
+            // 		break;
+            // 	}
+            // }
+            // exemplo de código encontrado no ipso_voltage_sensor.c
+            
+    if (obj_inst_id >= MAX_INSTANCE_COUNT) {
+        LOG_ERR("Invalid instance %d", obj_inst_id);
+        return NULL;
+    }
+
+            /* Set default values */
     command[index] = 0;
     command_in_action[index] = 0;
     dimming_level[index] = 100;
