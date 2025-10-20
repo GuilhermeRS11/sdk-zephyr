@@ -129,6 +129,9 @@ zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_LAMP
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_ELECTRICAL_MONITOR
     ucifi_electrical_monitor.c
 )
+zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_ILLUMINANCE_SENSOR
+    ucifi_illuminance_sensor.c
+)
 	
 # Shell commands
 zephyr_library_sources_ifdef(CONFIG_LWM2M_SHELL
