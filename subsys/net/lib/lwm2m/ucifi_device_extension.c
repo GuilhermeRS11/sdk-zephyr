@@ -23,7 +23,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include "lwm2m_engine.h"
 #include "ucifi_device_extension.h"
 
-#define DE_VERSION_MAJOR 1
+#define DE_VERSION_MAJOR 2
 #define DE_VERSION_MINOR 0
 
 #define MAX_INSTANCE_COUNT CONFIG_LWM2M_UCIFI_DEVICE_EXTENSION_INSTANCE_COUNT
