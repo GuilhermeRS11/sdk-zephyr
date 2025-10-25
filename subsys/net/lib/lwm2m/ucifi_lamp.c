@@ -78,7 +78,7 @@ static double light_source_energy[MAX_INSTANCE_COUNT];
 
 static struct lwm2m_engine_obj lamp;
 static struct lwm2m_engine_obj_field fields[] = {
-    OBJ_FIELD_DATA(UCIFI_LAMP_COMMAND_RID, RW, S8),
+    OBJ_FIELD_DATA(UCIFI_LAMP_COMMAND_RID, RW, S8), //no declaration for S8
     OBJ_FIELD_DATA(UCIFI_LAMP_COMMAND_IN_ACTION_RID, R, S8),
     OBJ_FIELD_DATA(UCIFI_LAMP_DIMMING_LEVEL_RID, R, U8),
     OBJ_FIELD_DATA(UCIFI_LAMP_DEFAULT_DIMMING_LEVEL_RID, RW_OPT, S8),
