@@ -11,11 +11,11 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #include "lwm2m_engine.h"
 #include "ucifi_electrical_monitor.h"
 
-#define EM_VERSION_MAJOR 1
-#define EM_VERSION_MINOR 0
+#define EM_VERSION_MAJOR 2
+#define EM_VERSION_MINOR 1
 
 #define MAX_INSTANCE_COUNT CONFIG_LWM2M_UCIFI_ELECTRICAL_MONITOR_INSTANCE_COUNT
-#define EM_MAX_ID 35
+#define EM_MAX_ID 39
 #define RESOURCE_INSTANCE_COUNT (EM_MAX_ID)
 
 static double voltage[MAX_INSTANCE_COUNT];
