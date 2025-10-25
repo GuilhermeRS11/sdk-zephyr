@@ -122,24 +122,27 @@ zephyr_library_sources_ifdef(CONFIG_LWM2M_IPSO_FILLING_SENSOR
     )
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_DEVICE_EXTENSION
     ucifi_device_extension.c
-)
+    )
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_BATTERY
     ucifi_battery.c
     )
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_LAMP
     ucifi_lamp.c
     )
+zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_LUMINAIRE_ASSET
+    ucifi_luminaire_asset.c
+    )
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_ELECTRICAL_MONITOR
     ucifi_electrical_monitor.c
-)
+    )
 zephyr_library_sources_ifdef(CONFIG_LWM2M_UCIFI_ILLUMINANCE_SENSOR
     ucifi_illuminance_sensor.c
-)
+    )
 	
 # Shell commands
 zephyr_library_sources_ifdef(CONFIG_LWM2M_SHELL
     lwm2m_shell.c
-)
+    )
 
 zephyr_linker_sources(SECTIONS iterables.ld)
 

@@ -75,6 +75,22 @@ config LWM2M_UCIFI_LAMP_INSTANCE_COUNT
 
 endif # LWM2M_UCIFI_LAMP
 
+menuconfig LWM2M_UCIFI_LUMINAIRE_ASSET
+	bool "uCIFI Luminaire Asset Object (ID 3417)"
+	help
+	  The uCIFI luminaire asset is an object that enables outdoor lighting control software to configure outdoor lamp controllers
+
+if LWM2M_UCIFI_LUMINAIRE_ASSET
+
+config LWM2M_UCIFI_LUMINAIRE_ASSET_INSTANCE_COUNT
+	int "Maximum # of uCIFI Luminaire Asset object instances"
+	default 1
+	help
+	  This setting defines how many uCIFI Luminaire Asset instances
+	  are supported by the LwM2M client.
+
+endif # LWM2M_UCIFI_LUMINAIRE_ASSET
+
 menuconfig LWM2M_UCIFI_ELECTRICAL_MONITOR
     bool "uCIFI Electrical Monitor Object (ID 3418)"
     help
