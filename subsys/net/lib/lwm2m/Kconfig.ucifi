@@ -108,6 +108,20 @@ config LWM2M_UCIFI_ELECTRICAL_MONITOR_INSTANCE_COUNT
 
 endif # LWM2M_UCIFI_ELECTRICAL_MONITOR
 
+menuconfig LWM2M_UCIFI_PHOTOCELL
+	bool "uCIFI Photocell (3419) Support"
+	help
+	  The uCIFI photocell object provides attributes to monitor and maintain
+	  a photocell sensor.
+
+if LWM2M_UCIFI_PHOTOCELL
+config LWM2M_UCIFI_PHOTOCELL_INSTANCE_COUNT
+	int "Maximum # of uCIFI Photocell object instances"
+	default 1
+	help
+	  This value sets the maximum allowable number of photocell instances.
+
+endif # LWM2M_UCIFI_PHOTOCELL
 
 menuconfig LWM2M_UCIFI_LPWAN
 	bool "uCIFI LPWAN (3412) Support"
