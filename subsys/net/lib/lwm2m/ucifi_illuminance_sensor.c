@@ -30,10 +30,22 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define ILLUMINANCE_SENSOR_MAX_ID 48
 #define RESOURCE_INSTANCE_COUNT (ILLUMINANCE_SENSOR_MAX_ID)
 
+// String length definitions for resource state variables
+#define UNIT_STR_MAX_SIZE 8
+#define APP_TYPE_STR_MAX_SIZE 32
+
 /* Resource state variables */
 static double sensor_value[MAX_INSTANCE_COUNT];
 static double min_measured_value[MAX_INSTANCE_COUNT];
 static double max_measured_value[MAX_INSTANCE_COUNT];
+static double min_range_value[MAX_INSTANCE_COUNT];
+static double max_range_value[MAX_INSTANCE_COUNT];
+static char sensor_units[MAX_INSTANCE_COUNT][UNIT_STR_MAX_SIZE];
+static char application_type[MAX_INSTANCE_COUNT][APP_TYPE_STR_MAX_SIZE];
+static int64_t timestamp_val[MAX_INSTANCE_COUNT];
+static double fractional_timestamp[MAX_INSTANCE_COUNT];
+static uint8_t measurement_quality_indicator[MAX_INSTANCE_COUNT];
+static uint8_t measurement_quality_level[MAX_INSTANCE_COUNT];
 
 
 static struct lwm2m_engine_obj illuminance_sensor;
@@ -75,16 +87,15 @@ static struct lwm2m_engine_obj_inst *illuminance_sensor_create(uint16_t obj_inst
 {
     int index = 0, i = 0, j = 0;
 
-    
-    if (inst[index].obj != NULL) {
-        LOG_ERR("Instance %d already exists", obj_inst_id);
+    if (obj_inst_id >= MAX_INSTANCE_COUNT) {
+        LOG_ERR("Invalid instance %d", obj_inst_id);
         return NULL;
     }
 
-    // TODO: implementar uma checagem mais robusta de instâncias já existentes
+    index = obj_inst_id;
 
-    if (obj_inst_id >= MAX_INSTANCE_COUNT) {
-        LOG_ERR("Invalid instance %d", obj_inst_id);
+    if (inst[index].obj != NULL) {
+        LOG_ERR("Instance %d already exists", obj_inst_id);
         return NULL;
     }
 
@@ -92,6 +103,14 @@ static struct lwm2m_engine_obj_inst *illuminance_sensor_create(uint16_t obj_inst
     sensor_value[index] = 0;
     min_measured_value[index] = 0;
     max_measured_value[index] = 0;
+    min_range_value[index] = 0;
+    max_range_value[index] = 0;
+    sensor_units[index][0] = '\0';
+    application_type[index][0] = '\0';
+    timestamp_val[index] = 0;
+    fractional_timestamp[index] = 0;
+    measurement_quality_indicator[index] = 0;
+    measurement_quality_level[index] = 0;
 
 
     (void)memset(res[index], 0, sizeof(res[index]));
@@ -99,18 +118,28 @@ static struct lwm2m_engine_obj_inst *illuminance_sensor_create(uint16_t obj_inst
 
     INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_SENSOR_VALUE_RID, res[index], i, res_inst[index], j,
                     &sensor_value[index], sizeof(sensor_value[index]));
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_MIN_MEASURED_VALUE_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_MAX_MEASURED_VALUE_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_MIN_RANGE_VALUE_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_MAX_RANGE_VALUE_RID, res[index], i, res_inst[index], j);
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_MIN_MEASURED_VALUE_RID, res[index], i, res_inst[index], j,
+                    &min_measured_value[index], sizeof(min_measured_value[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_MAX_MEASURED_VALUE_RID, res[index], i, res_inst[index], j,
+                    &max_measured_value[index], sizeof(max_measured_value[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_MIN_RANGE_VALUE_RID, res[index], i, res_inst[index], j,
+                    &min_range_value[index], sizeof(min_range_value[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_MAX_RANGE_VALUE_RID, res[index], i, res_inst[index], j,
+                    &max_range_value[index], sizeof(max_range_value[index]));
     INIT_OBJ_RES_EXECUTE(UCIFI_ILLUM_SENS_RESET_MIN_MAX_MESURED_VALUES_RID, res[index], i,
                     reset_min_max_measured_values_cb);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_SENSOR_UNITS_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_APPLICATION_TYPE_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_TIMESTAMP_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_FRACTIONAL_TIMESTAMP_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_MEASUREMENT_QUALITY_INDICATOR_RID, res[index], i, res_inst[index], j);
-    INIT_OBJ_RES_OPTDATA(UCIFI_ILLUM_SENS_MEASUREMENT_QUALITY_LEVEL_RID, res[index], i, res_inst[index], j);
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_SENSOR_UNITS_RID, res[index], i, res_inst[index], j,
+                    &sensor_units[index], sizeof(sensor_units[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_APPLICATION_TYPE_RID, res[index], i, res_inst[index], j,
+                    &application_type[index], sizeof(application_type[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_TIMESTAMP_RID, res[index], i, res_inst[index], j,
+                    &timestamp_val[index], sizeof(timestamp_val[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_FRACTIONAL_TIMESTAMP_RID, res[index], i, res_inst[index], j,
+                    &fractional_timestamp[index], sizeof(fractional_timestamp[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_MEASUREMENT_QUALITY_INDICATOR_RID, res[index], i, res_inst[index], j,
+                    &measurement_quality_indicator[index], sizeof(measurement_quality_indicator[index]));
+    INIT_OBJ_RES_DATA(UCIFI_ILLUM_SENS_MEASUREMENT_QUALITY_LEVEL_RID, res[index], i, res_inst[index], j,
+                    &measurement_quality_level[index], sizeof(measurement_quality_level[index]));
 
     inst[index].resources = res[index];
     inst[index].resource_count = i;
