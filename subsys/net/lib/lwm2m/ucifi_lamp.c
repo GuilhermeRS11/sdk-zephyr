@@ -27,8 +27,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define LAMP_VERSION_MINOR 0
 
 #define MAX_INSTANCE_COUNT CONFIG_LWM2M_UCIFI_LAMP_INSTANCE_COUNT
-#define LAMP_MAX_ID 48
-#define RESOURCE_INSTANCE_COUNT (LAMP_MAX_ID)
+/* Resource instance count will be derived from the fields[] array below */
 
 /* Resource state variables */
 static int8_t command[MAX_INSTANCE_COUNT];
@@ -43,8 +42,6 @@ static bool relay_failure[MAX_INSTANCE_COUNT];
 static bool day_burner[MAX_INSTANCE_COUNT];
 static bool cycling_failure[MAX_INSTANCE_COUNT];
 static bool control_gear_comm_failure[MAX_INSTANCE_COUNT];
-static int32_t scheduler_id[MAX_INSTANCE_COUNT]; 
-static bool invalid_scheduler[MAX_INSTANCE_COUNT];
 static double lamp_operating_hours[MAX_INSTANCE_COUNT];
 static int64_t lamp_on_timestamp[MAX_INSTANCE_COUNT];
 static int32_t lamp_switch_counter[MAX_INSTANCE_COUNT];
@@ -74,10 +71,40 @@ static double light_source_voltage[MAX_INSTANCE_COUNT];
 static double light_source_current[MAX_INSTANCE_COUNT];
 static double light_source_power[MAX_INSTANCE_COUNT];
 static double light_source_energy[MAX_INSTANCE_COUNT];
+static double max_light_source_current[MAX_INSTANCE_COUNT];
+
+/* Additional resources not declared previously */
+static double fade_time_default[MAX_INSTANCE_COUNT];
+static int64_t manual_override_start_time[MAX_INSTANCE_COUNT];
+static int64_t manual_override_end_time[MAX_INSTANCE_COUNT];
+static double fade_time_override[MAX_INSTANCE_COUNT];
+static int32_t default_override_duration[MAX_INSTANCE_COUNT];
+static bool manual_override_active[MAX_INSTANCE_COUNT];
+static int32_t default_light_color_temperature[MAX_INSTANCE_COUNT];
+static double driver_operating_hours[MAX_INSTANCE_COUNT];
+static int32_t capabilities_bitmask[MAX_INSTANCE_COUNT];
+/* Strings for 58..61 per spec */
+#define GTIN_STR_MAX_SIZE 32
+#define SERIAL_STR_MAX_SIZE 32
+#define FW_VER_STR_MAX_SIZE 32
+#define DALI_VER_STR_MAX_SIZE 32
+static char manufacturer_gtin[MAX_INSTANCE_COUNT][GTIN_STR_MAX_SIZE];
+static char manufacturer_serial[MAX_INSTANCE_COUNT][SERIAL_STR_MAX_SIZE];
+static char firmware_version[MAX_INSTANCE_COUNT][FW_VER_STR_MAX_SIZE];
+static char dali_version[MAX_INSTANCE_COUNT][DALI_VER_STR_MAX_SIZE];
+/* 64/65 per spec */
+static double lamp_max_operating_hours_threshold[MAX_INSTANCE_COUNT];
+static bool lamp_max_operating_hours_exceeded[MAX_INSTANCE_COUNT];
+
+static int64_t timestamp[MAX_INSTANCE_COUNT];
+static double fractional_timestamp[MAX_INSTANCE_COUNT];
+/* Use U8 for measurement quality resources, matching common OMA defs */
+static uint8_t measurement_quality_indicator[MAX_INSTANCE_COUNT];
+static uint8_t measurement_quality_level[MAX_INSTANCE_COUNT];
 
 static struct lwm2m_engine_obj lamp;
 static struct lwm2m_engine_obj_field fields[] = {
-    OBJ_FIELD_DATA(UCIFI_LAMP_COMMAND_RID, RW, S8), //no declaration for S8
+    OBJ_FIELD_DATA(UCIFI_LAMP_COMMAND_RID, RW, S8),
     OBJ_FIELD_DATA(UCIFI_LAMP_COMMAND_IN_ACTION_RID, R, S8),
     OBJ_FIELD_DATA(UCIFI_LAMP_DIMMING_LEVEL_RID, R, U8),
     OBJ_FIELD_DATA(UCIFI_LAMP_DEFAULT_DIMMING_LEVEL_RID, RW_OPT, S8),
@@ -90,8 +117,6 @@ static struct lwm2m_engine_obj_field fields[] = {
     OBJ_FIELD_DATA(UCIFI_LAMP_DAY_BURNER_RID, R, BOOL),
     OBJ_FIELD_DATA(UCIFI_LAMP_CYCLING_FAILURE_RID, R, BOOL),
     OBJ_FIELD_DATA(UCIFI_LAMP_CONTROL_GEAR_COMM_FAILURE_RID, R, BOOL),
-    OBJ_FIELD_DATA(UCIFI_LAMP_SCHEDULER_ID_RID, RW, S32),
-    OBJ_FIELD_DATA(UCIFI_LAMP_INVALID_SCHEDULER_RID, R, BOOL),
     OBJ_FIELD_EXECUTE_OPT(UCIFI_LAMP_RESET_HOURS_RID),
     OBJ_FIELD_DATA(UCIFI_LAMP_ON_TIMESTAMP_RID, R_OPT, TIME),
     OBJ_FIELD_DATA(UCIFI_LAMP_SWITCH_COUNTER_RID, R_OPT, S32),
@@ -124,10 +149,35 @@ static struct lwm2m_engine_obj_field fields[] = {
     OBJ_FIELD_DATA(UCIFI_LAMP_SOURCE_CURRENT_RID, R_OPT, FLOAT),
     OBJ_FIELD_DATA(UCIFI_LAMP_SOURCE_POWER_RID, R_OPT, FLOAT),
     OBJ_FIELD_DATA(UCIFI_LAMP_SOURCE_ENERGY_RID, R_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MAX_LIGHT_SOURCE_CURRENT_RID, RW_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_LAMP_FADE_TIME_DEFAULT_RID, RW_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MANUAL_OVERRIDE_START_TIME_RID, RW_OPT, TIME),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MANUAL_OVERRIDE_END_TIME_RID, RW_OPT, TIME),
+    OBJ_FIELD_DATA(UCIFI_LAMP_FADE_TIME_OVERRIDE_RID, RW_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_LAMP_DEFAULT_OVERRIDE_DURATION_RID, RW_OPT, S32),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MANUAL_OVERRIDE_ACTIVE_RID, R_OPT, BOOL),
+    OBJ_FIELD_DATA(UCIFI_LAMP_DEFAULT_LIGHT_COLOR_TEMPERATURE_RID, RW_OPT, S32),
+    OBJ_FIELD_DATA(UCIFI_LAMP_DRIVER_OPERATING_HOURS_RID, R_OPT, FLOAT),
+    OBJ_FIELD_EXECUTE_OPT(UCIFI_LAMP_DRIVER_OPERATING_HOURS_RESET_RID),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MANUFACTURER_GTIN_RID, R_OPT, STRING),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MANUFACTURER_SERIAL_NUMBER_RID, R_OPT, STRING),
+    OBJ_FIELD_DATA(UCIFI_LAMP_FIRMWARE_VERSION_RID, R_OPT, STRING),
+    OBJ_FIELD_DATA(UCIFI_LAMP_DALI_VERSION_RID, R_OPT, STRING),
+    OBJ_FIELD_DATA(UCIFI_LAMP_CAPABILITIES_BITMASK_RID, R_OPT, S32),
+    OBJ_FIELD_DATA(UCIFI_LAMP_LAMP_MAX_OPERATING_HOURS_THRESHOLD_RID, RW_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_LAMP_LAMP_MAX_OPERATING_HOURS_EXCEEDED_RID, R_OPT, BOOL),
+    OBJ_FIELD_DATA(UCIFI_LAMP_TIMESTAMP_RID, R_OPT, TIME),
+    OBJ_FIELD_DATA(UCIFI_LAMP_FRACTIONAL_TIMESTAMP_RID, R_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MEASUREMENT_QUALITY_INDICATOR_RID, R_OPT, U8),
+    OBJ_FIELD_DATA(UCIFI_LAMP_MEASUREMENT_QUALITY_LEVEL_RID, R_OPT, U8),
 };
 
+/* Size resource arrays according to the fields[] list */
+#define NUMBER_OF_OBJ_FIELDS ARRAY_SIZE(fields)
+#define RESOURCE_INSTANCE_COUNT (NUMBER_OF_OBJ_FIELDS)
+
 static struct lwm2m_engine_obj_inst inst[MAX_INSTANCE_COUNT];
-static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][LAMP_MAX_ID];
+static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][NUMBER_OF_OBJ_FIELDS];
 static struct lwm2m_engine_res_inst res_inst[MAX_INSTANCE_COUNT][RESOURCE_INSTANCE_COUNT];
 
 static int reset_lamp_hours_cb(uint16_t obj_inst_id, uint8_t *args, uint16_t args_len)
@@ -184,40 +234,29 @@ static int reset_shutdown_counter_cb(uint16_t obj_inst_id, uint8_t *args, uint16
 
 static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
 {
-    int index = 0, i = 0, j = 0;
+    int index, i = 0, j = 0;
 
-    
-    if (inst[index].obj != NULL) {
-        LOG_ERR("Instance %d already exists", obj_inst_id);
+    /* Check duplicate instance */
+    for (index = 0; index < MAX_INSTANCE_COUNT; index++) {
+        if (inst[index].obj && inst[index].obj_inst_id == obj_inst_id) {
+            LOG_ERR("Can not create instance - already existing: %u", obj_inst_id);
+            return NULL;
+        }
+    }
+
+    /* Find a free slot */
+    for (index = 0; index < MAX_INSTANCE_COUNT; index++) {
+        if (!inst[index].obj) {
+            break;
+        }
+    }
+
+    if (index >= MAX_INSTANCE_COUNT) {
+        LOG_ERR("Can not create instance - no more room: %u", obj_inst_id);
         return NULL;
     }
 
-    // TODO: implementar uma checagem mais robusta de instâncias já existentes
-    
-    // for (index = 0; index < MAX_INSTANCE_COUNT; index++) {
-    // if (inst[index].obj && inst[index].obj_inst_id == obj_inst_id) {
-    //     LOG_ERR("Can not create instance - "
-    //         "already existing: %u",
-    //         obj_inst_id);
-    //     return NULL;
-    //     }
-    // }
-    // exemplo de código encontrado no ipso_voltage_sensor.c
-    
-    // TODO: Faltou incrementar o index para o próximo disponível
-    // for (index = 0; index < MAX_INSTANCE_COUNT; index++) {
-        // 	if (!inst[index].obj) {
-            // 		break;
-            // 	}
-            // }
-            // exemplo de código encontrado no ipso_voltage_sensor.c
-            
-    if (obj_inst_id >= MAX_INSTANCE_COUNT) {
-        LOG_ERR("Invalid instance %d", obj_inst_id);
-        return NULL;
-    }
-
-            /* Set default values */
+    /* Set default values */
     command[index] = 0;
     command_in_action[index] = 0;
     dimming_level[index] = 100;
@@ -229,8 +268,6 @@ static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
     day_burner[index] = false;
     cycling_failure[index] = false;
     control_gear_comm_failure[index] = false;
-    scheduler_id[index] = -1;
-    invalid_scheduler[index] = false;
     lamp_on_timestamp[index] = 0;
     lamp_switch_counter[index] = 0;
     control_gear_start_counter[index] = 0;
@@ -259,6 +296,26 @@ static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
     light_source_current[index] = 0.0;
     light_source_power[index] = 0.0;
     light_source_energy[index] = 0.0;
+    max_light_source_current[index] = 0.0;
+    fade_time_default[index] = 0;
+    manual_override_start_time[index] = 0;
+    manual_override_end_time[index] = 0;
+    fade_time_override[index] = 0;
+    default_override_duration[index] = 0;
+    manual_override_active[index] = false;
+    default_light_color_temperature[index] = 2700;
+    driver_operating_hours[index] = 0.0;
+    manufacturer_gtin[index][0] = '\0';
+    manufacturer_serial[index][0] = '\0';
+    firmware_version[index][0] = '\0';
+    dali_version[index][0] = '\0';
+    capabilities_bitmask[index] = 0;
+    lamp_max_operating_hours_threshold[index] = 0.0;
+    lamp_max_operating_hours_exceeded[index] = false;
+    timestamp[index] = 0;
+    fractional_timestamp[index] = 0.0;
+    measurement_quality_indicator[index] = 0;
+    measurement_quality_level[index] = 0;
 
     (void)memset(res[index], 0, sizeof(res[index]));
     init_res_instance(res_inst[index], ARRAY_SIZE(res_inst[index]));
@@ -289,10 +346,6 @@ static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
                     &cycling_failure[index], sizeof(cycling_failure[index]));
     INIT_OBJ_RES_DATA(UCIFI_LAMP_CONTROL_GEAR_COMM_FAILURE_RID, res[index], i, res_inst[index], j,
                     &control_gear_comm_failure[index], sizeof(control_gear_comm_failure[index]));
-    INIT_OBJ_RES_DATA(UCIFI_LAMP_SCHEDULER_ID_RID, res[index], i, res_inst[index], j,
-                    &scheduler_id[index], sizeof(scheduler_id[index]));
-    INIT_OBJ_RES_DATA(UCIFI_LAMP_INVALID_SCHEDULER_RID, res[index], i, res_inst[index], j,
-                    &invalid_scheduler[index], sizeof(invalid_scheduler[index]));
     INIT_OBJ_RES_EXECUTE(UCIFI_LAMP_RESET_HOURS_RID, res[index], i, 
 		            reset_lamp_hours_cb);
     INIT_OBJ_RES_DATA(UCIFI_LAMP_ON_TIMESTAMP_RID, res[index], i, res_inst[index], j,
@@ -345,6 +398,8 @@ static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
                     &color_temp_actual[index], sizeof(color_temp_actual[index]));
     INIT_OBJ_RES_DATA(UCIFI_LAMP_VIRTUAL_POWER_OUTPUT_RID, res[index], i, res_inst[index], j,
                     &virtual_power_output[index], sizeof(virtual_power_output[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_MAX_LIGHT_SOURCE_CURRENT_RID, res[index], i, res_inst[index], j,
+                    &max_light_source_current[index], sizeof(max_light_source_current[index]));
     INIT_OBJ_RES_DATA(UCIFI_LAMP_VOLTAGE_MAX_DIM_RID, res[index], i, res_inst[index], j,
                     &voltage_max_dim[index], sizeof(voltage_max_dim[index]));
     INIT_OBJ_RES_DATA(UCIFI_LAMP_VOLTAGE_MIN_DIM_RID, res[index], i, res_inst[index], j,
@@ -357,6 +412,45 @@ static struct lwm2m_engine_obj_inst *lamp_create(uint16_t obj_inst_id)
                     &light_source_power[index], sizeof(light_source_power[index]));
     INIT_OBJ_RES_DATA(UCIFI_LAMP_SOURCE_ENERGY_RID, res[index], i, res_inst[index], j,
                     &light_source_energy[index], sizeof(light_source_energy[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_FADE_TIME_DEFAULT_RID, res[index], i, res_inst[index], j,
+                    &fade_time_default[index], sizeof(fade_time_default[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_MANUAL_OVERRIDE_START_TIME_RID, res[index], i, res_inst[index], j,
+                    &manual_override_start_time[index], sizeof(manual_override_start_time[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_MANUAL_OVERRIDE_END_TIME_RID, res[index], i, res_inst[index], j,
+                    &manual_override_end_time[index], sizeof(manual_override_end_time[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_FADE_TIME_OVERRIDE_RID, res[index], i, res_inst[index], j,
+                    &fade_time_override[index], sizeof(fade_time_override[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_DEFAULT_OVERRIDE_DURATION_RID, res[index], i, res_inst[index], j,
+                    &default_override_duration[index], sizeof(default_override_duration[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_MANUAL_OVERRIDE_ACTIVE_RID, res[index], i, res_inst[index], j,
+                    &manual_override_active[index], sizeof(manual_override_active[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_DEFAULT_LIGHT_COLOR_TEMPERATURE_RID, res[index], i, res_inst[index], j,
+                    &default_light_color_temperature[index], sizeof(default_light_color_temperature[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_DRIVER_OPERATING_HOURS_RID, res[index], i, res_inst[index], j,
+                    &driver_operating_hours[index], sizeof(driver_operating_hours[index]));
+    INIT_OBJ_RES_EXECUTE(UCIFI_LAMP_DRIVER_OPERATING_HOURS_RESET_RID, res[index], i, NULL);
+    INIT_OBJ_RES_DATA_LEN(UCIFI_LAMP_MANUFACTURER_GTIN_RID, res[index], i, res_inst[index], j,
+                    manufacturer_gtin[index], GTIN_STR_MAX_SIZE, 0);
+    INIT_OBJ_RES_DATA_LEN(UCIFI_LAMP_MANUFACTURER_SERIAL_NUMBER_RID, res[index], i, res_inst[index], j,
+                    manufacturer_serial[index], SERIAL_STR_MAX_SIZE, 0);
+    INIT_OBJ_RES_DATA_LEN(UCIFI_LAMP_FIRMWARE_VERSION_RID, res[index], i, res_inst[index], j,
+                    firmware_version[index], FW_VER_STR_MAX_SIZE, 0);
+    INIT_OBJ_RES_DATA_LEN(UCIFI_LAMP_DALI_VERSION_RID, res[index], i, res_inst[index], j,
+                    dali_version[index], DALI_VER_STR_MAX_SIZE, 0);
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_CAPABILITIES_BITMASK_RID, res[index], i, res_inst[index], j,
+                    &capabilities_bitmask[index], sizeof(capabilities_bitmask[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_LAMP_MAX_OPERATING_HOURS_THRESHOLD_RID, res[index], i, res_inst[index], j,
+                    &lamp_max_operating_hours_threshold[index], sizeof(lamp_max_operating_hours_threshold[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_LAMP_MAX_OPERATING_HOURS_EXCEEDED_RID, res[index], i, res_inst[index], j,
+                    &lamp_max_operating_hours_exceeded[index], sizeof(lamp_max_operating_hours_exceeded[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_TIMESTAMP_RID, res[index], i, res_inst[index], j,
+                    &timestamp[index], sizeof(timestamp[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_FRACTIONAL_TIMESTAMP_RID, res[index], i, res_inst[index], j,
+                    &fractional_timestamp[index], sizeof(fractional_timestamp[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_MEASUREMENT_QUALITY_INDICATOR_RID, res[index], i, res_inst[index], j,
+                    &measurement_quality_indicator[index], sizeof(measurement_quality_indicator[index]));
+    INIT_OBJ_RES_DATA(UCIFI_LAMP_MEASUREMENT_QUALITY_LEVEL_RID, res[index], i, res_inst[index], j,
+                    &measurement_quality_level[index], sizeof(measurement_quality_level[index]));
 
     inst[index].resources = res[index];
     inst[index].resource_count = i;
@@ -370,7 +464,7 @@ static int ucifi_lamp_init(void)
     lamp.obj_id = UCIFI_OBJECT_LAMP_ID;
     lamp.version_major = LAMP_VERSION_MAJOR;
     lamp.version_minor = LAMP_VERSION_MINOR;
-    lamp.is_core = true;
+    lamp.is_core = false;
     lamp.fields = fields;
     lamp.field_count = ARRAY_SIZE(fields);
     lamp.max_instance_count = MAX_INSTANCE_COUNT;
