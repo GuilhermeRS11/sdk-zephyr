@@ -15,8 +15,9 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define EM_VERSION_MINOR 1
 
 #define MAX_INSTANCE_COUNT CONFIG_LWM2M_UCIFI_ELECTRICAL_MONITOR_INSTANCE_COUNT
-#define EM_MAX_ID 39
-#define RESOURCE_INSTANCE_COUNT (EM_MAX_ID)
+/* Multi-instance capacity for custom dim thresholds/ranges */
+#define EM_CUSTOM_DIM_MAX 4
+/* Size resource arrays dynamically from fields[] */
 
 static double voltage[MAX_INSTANCE_COUNT];
 static double current[MAX_INSTANCE_COUNT];
@@ -47,6 +48,13 @@ static double max_inrush_current[MAX_INSTANCE_COUNT];
 static double latest_inrush_current[MAX_INSTANCE_COUNT];
 static double reactive_power[MAX_INSTANCE_COUNT];
 static double reactive_energy[MAX_INSTANCE_COUNT];
+static double apparent_energy[MAX_INSTANCE_COUNT];
+static double apparent_power[MAX_INSTANCE_COUNT];
+/* Multi-instance resources 31..34 */
+static double low_power_threshold_custom_dim[MAX_INSTANCE_COUNT][EM_CUSTOM_DIM_MAX];
+static double high_power_threshold_custom_dim[MAX_INSTANCE_COUNT][EM_CUSTOM_DIM_MAX];
+static int32_t custom_dim_level_min[MAX_INSTANCE_COUNT][EM_CUSTOM_DIM_MAX];
+static int32_t custom_dim_level_max[MAX_INSTANCE_COUNT][EM_CUSTOM_DIM_MAX];
 static int32_t dimming_level[MAX_INSTANCE_COUNT];
 static int64_t timestamp[MAX_INSTANCE_COUNT];
 static double fractional_timestamp[MAX_INSTANCE_COUNT];
@@ -86,15 +94,25 @@ static struct lwm2m_engine_obj_field fields[] = {
     OBJ_FIELD_DATA(UCIFI_EM_LATEST_INRUSH_CURRENT_RID, R_OPT, FLOAT),
     OBJ_FIELD_DATA(UCIFI_EM_REACTIVE_POWER_RID, R_OPT, FLOAT),
     OBJ_FIELD_DATA(UCIFI_EM_REACTIVE_ENERGY_RID, R_OPT, FLOAT),
+    /* 31..34 are multi-instance resources; declare fields and create as multi optional */
+    OBJ_FIELD_DATA(UCIFI_EM_LOW_POWER_THRESHOLD_CUSTOM_DIM_RID, RW_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_EM_HIGH_POWER_THRESHOLD_CUSTOM_DIM_RID, RW_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_EM_CUSTOM_DIM_LEVEL_MIN_RID, RW_OPT, S32),
+    OBJ_FIELD_DATA(UCIFI_EM_CUSTOM_DIM_LEVEL_MAX_RID, RW_OPT, S32),
     OBJ_FIELD_DATA(UCIFI_EM_DIMMING_LEVEL_RID, R_OPT, S32),
+    OBJ_FIELD_DATA(UCIFI_EM_APPARENT_ENERGY_RID, R_OPT, FLOAT),
+    OBJ_FIELD_DATA(UCIFI_EM_APPARENT_POWER_RID, R_OPT, FLOAT),
     OBJ_FIELD_DATA(UCIFI_EM_TIMESTAMP_RID, R_OPT, TIME),
     OBJ_FIELD_DATA(UCIFI_EM_FRACTIONAL_TIMESTAMP_RID, R_OPT, FLOAT),
     OBJ_FIELD_DATA(UCIFI_EM_MEASUREMENT_QUALITY_INDICATOR_RID, R_OPT, S32),
     OBJ_FIELD_DATA(UCIFI_EM_MEASUREMENT_QUALITY_LEVEL_RID, R_OPT, S32),
 };
 
+/* Arrays sized from fields[] */
+#define NUMBER_OF_OBJ_FIELDS ARRAY_SIZE(fields)
+#define RESOURCE_INSTANCE_COUNT (NUMBER_OF_OBJ_FIELDS)
 static struct lwm2m_engine_obj_inst inst[MAX_INSTANCE_COUNT];
-static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][EM_MAX_ID];
+static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][NUMBER_OF_OBJ_FIELDS];
 static struct lwm2m_engine_res_inst res_inst[MAX_INSTANCE_COUNT][RESOURCE_INSTANCE_COUNT];
 
 static int reset_energy_cb(uint16_t obj_inst_id, uint8_t *args, uint16_t args_len)
@@ -151,6 +169,12 @@ static struct lwm2m_engine_obj_inst *em_create(uint16_t obj_inst_id)
     latest_inrush_current[index] = 0.0;
     reactive_power[index] = 0.0;
     reactive_energy[index] = 0.0;
+    apparent_energy[index] = 0.0;
+    apparent_power[index] = 0.0;
+    (void)memset(low_power_threshold_custom_dim[index], 0, sizeof(low_power_threshold_custom_dim[index]));
+    (void)memset(high_power_threshold_custom_dim[index], 0, sizeof(high_power_threshold_custom_dim[index]));
+    (void)memset(custom_dim_level_min[index], 0, sizeof(custom_dim_level_min[index]));
+    (void)memset(custom_dim_level_max[index], 0, sizeof(custom_dim_level_max[index]));
     dimming_level[index] = 100;
     timestamp[index] = 0;
     fractional_timestamp[index] = 0.0;
@@ -219,8 +243,21 @@ static struct lwm2m_engine_obj_inst *em_create(uint16_t obj_inst_id)
                     &reactive_power[index], sizeof(reactive_power[index]));
     INIT_OBJ_RES_DATA(UCIFI_EM_REACTIVE_ENERGY_RID, res[index], i, res_inst[index], j,
                     &reactive_energy[index], sizeof(reactive_energy[index]));
+    /* Multi-instance optional resources 31..34: pre-allocate entries, not created yet */
+    INIT_OBJ_RES_MULTI_DATA_LEN(UCIFI_EM_LOW_POWER_THRESHOLD_CUSTOM_DIM_RID, res[index], i, res_inst[index], j,
+                    EM_CUSTOM_DIM_MAX, false, low_power_threshold_custom_dim[index], sizeof(double), sizeof(double));
+    INIT_OBJ_RES_MULTI_DATA_LEN(UCIFI_EM_HIGH_POWER_THRESHOLD_CUSTOM_DIM_RID, res[index], i, res_inst[index], j,
+                    EM_CUSTOM_DIM_MAX, false, high_power_threshold_custom_dim[index], sizeof(double), sizeof(double));
+    INIT_OBJ_RES_MULTI_DATA_LEN(UCIFI_EM_CUSTOM_DIM_LEVEL_MIN_RID, res[index], i, res_inst[index], j,
+                    EM_CUSTOM_DIM_MAX, false, custom_dim_level_min[index], sizeof(int32_t), sizeof(int32_t));
+    INIT_OBJ_RES_MULTI_DATA_LEN(UCIFI_EM_CUSTOM_DIM_LEVEL_MAX_RID, res[index], i, res_inst[index], j,
+                    EM_CUSTOM_DIM_MAX, false, custom_dim_level_max[index], sizeof(int32_t), sizeof(int32_t));
     INIT_OBJ_RES_DATA(UCIFI_EM_DIMMING_LEVEL_RID, res[index], i, res_inst[index], j,
                     &dimming_level[index], sizeof(dimming_level[index]));
+    INIT_OBJ_RES_DATA(UCIFI_EM_APPARENT_ENERGY_RID, res[index], i, res_inst[index], j,
+                    &apparent_energy[index], sizeof(apparent_energy[index]));
+    INIT_OBJ_RES_DATA(UCIFI_EM_APPARENT_POWER_RID, res[index], i, res_inst[index], j,
+                    &apparent_power[index], sizeof(apparent_power[index]));
     INIT_OBJ_RES_DATA(UCIFI_EM_TIMESTAMP_RID, res[index], i, res_inst[index], j,
                   &timestamp[index], sizeof(timestamp[index]));
     INIT_OBJ_RES_DATA(UCIFI_EM_FRACTIONAL_TIMESTAMP_RID, res[index], i, res_inst[index], j,
@@ -242,7 +279,7 @@ static int ucifi_electrical_monitor_init(void)
     electrical_monitor.obj_id = UCIFI_OBJECT_ELECTRICAL_MONITOR_ID;
     electrical_monitor.version_major = EM_VERSION_MAJOR;
     electrical_monitor.version_minor = EM_VERSION_MINOR;
-    electrical_monitor.is_core = true;
+    electrical_monitor.is_core = false;
     electrical_monitor.fields = fields;
     electrical_monitor.field_count = ARRAY_SIZE(fields);
     electrical_monitor.max_instance_count = MAX_INSTANCE_COUNT;

@@ -38,6 +38,9 @@
 #define UCIFI_EM_CUSTOM_DIM_LEVEL_MIN_RID             33
 #define UCIFI_EM_CUSTOM_DIM_LEVEL_MAX_RID             34
 #define UCIFI_EM_DIMMING_LEVEL_RID                    35
+/* Added per 3418 v2.1 */
+#define UCIFI_EM_APPARENT_ENERGY_RID                  36
+#define UCIFI_EM_APPARENT_POWER_RID                   37
 #define UCIFI_EM_TIMESTAMP_RID                        5518
 #define UCIFI_EM_FRACTIONAL_TIMESTAMP_RID             6050
 #define UCIFI_EM_MEASUREMENT_QUALITY_INDICATOR_RID    6042
