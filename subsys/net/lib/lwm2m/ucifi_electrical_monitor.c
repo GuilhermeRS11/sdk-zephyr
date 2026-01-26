@@ -110,7 +110,8 @@ static struct lwm2m_engine_obj_field fields[] = {
 
 /* Arrays sized from fields[] */
 #define NUMBER_OF_OBJ_FIELDS ARRAY_SIZE(fields)
-#define RESOURCE_INSTANCE_COUNT (NUMBER_OF_OBJ_FIELDS)
+/* Account for extra instances created by multi-instance resources 31..34. */
+#define RESOURCE_INSTANCE_COUNT (NUMBER_OF_OBJ_FIELDS + (4 * (EM_CUSTOM_DIM_MAX - 1)))
 static struct lwm2m_engine_obj_inst inst[MAX_INSTANCE_COUNT];
 static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][NUMBER_OF_OBJ_FIELDS];
 static struct lwm2m_engine_res_inst res_inst[MAX_INSTANCE_COUNT][RESOURCE_INSTANCE_COUNT];
