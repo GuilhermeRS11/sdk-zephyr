@@ -69,7 +69,7 @@ LOG_MODULE_REGISTER(LOG_MODULE_NAME);
 #define CLIENT_BINDING_LEN sizeof("UQ")
 #define CLIENT_QUEUE_LEN sizeof("Q")
 #define DELAY_BEFORE_CLOSING	(1 * MSEC_PER_SEC)
-#define DELAY_FOR_ACK		100U
+#define DELAY_FOR_ACK		(IS_ENABLED(CONFIG_APP_CONNECTIVITY_LORA) ? 300000U : 100U)
 #define EXCHANGE_LIFETIME	247U
 #define MINIMUM_PERIOD		15
 #define DISABLE_TIMEOUT		(K_SECONDS(CONFIG_LWM2M_RD_CLIENT_MAX_RETRIES * EXCHANGE_LIFETIME))
@@ -874,6 +874,8 @@ static int sm_send_registration(bool send_obj_support_data,
 	int ret;
 	char binding[CLIENT_BINDING_LEN];
 	char queue[CLIENT_QUEUE_LEN];
+	bool include_obj_support_data = send_obj_support_data &&
+		!IS_ENABLED(CONFIG_APP_CONNECTIVITY_LORA);
 
 	msg = rd_get_message();
 	if (!msg) {
@@ -909,7 +911,7 @@ static int sm_send_registration(bool send_obj_support_data,
 		}
 	}
 
-	if (send_obj_support_data) {
+	if (include_obj_support_data) {
 		ret = coap_append_option_int(
 			&msg->cpkt, COAP_OPTION_CONTENT_FORMAT,
 			LWM2M_FORMAT_APP_LINK_FORMAT);
@@ -980,7 +982,7 @@ static int sm_send_registration(bool send_obj_support_data,
 #endif
 	}
 
-	if (send_obj_support_data) {
+	if (include_obj_support_data) {
 		ret = coap_packet_append_payload_marker(&msg->cpkt);
 		if (ret < 0) {
 			goto cleanup;

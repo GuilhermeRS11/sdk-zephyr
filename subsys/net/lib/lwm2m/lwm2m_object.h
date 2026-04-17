@@ -131,12 +131,13 @@
 
 BUILD_ASSERT(CONFIG_LWM2M_COAP_BLOCK_SIZE <= CONFIG_LWM2M_COAP_MAX_MSG_SIZE,
 	     "CoAP block size can't exceed maximum message size");
-BUILD_ASSERT(CONFIG_LWM2M_COAP_BLOCK_SIZE == 64 ||
+BUILD_ASSERT(CONFIG_LWM2M_COAP_BLOCK_SIZE == 32 ||
+	     CONFIG_LWM2M_COAP_BLOCK_SIZE == 64 ||
 	     CONFIG_LWM2M_COAP_BLOCK_SIZE == 128 ||
 	     CONFIG_LWM2M_COAP_BLOCK_SIZE == 256 ||
 	     CONFIG_LWM2M_COAP_BLOCK_SIZE == 512 ||
 	     CONFIG_LWM2M_COAP_BLOCK_SIZE == 1024,
-	     "CoAP block must be 64, 128, 256, 512 or 1024");
+	     "CoAP block must be 32, 64, 128, 256, 512 or 1024");
 
 /* buffer util macros */
 #define CPKT_BUF_WRITE(cpkt)	(cpkt)->data, &(cpkt)->offset, (cpkt)->max_len

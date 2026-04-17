@@ -110,8 +110,12 @@ static struct lwm2m_engine_obj_field fields[] = {
 
 /* Arrays sized from fields[] */
 #define NUMBER_OF_OBJ_FIELDS ARRAY_SIZE(fields)
+#if defined(CONFIG_APP_CONNECTIVITY_LORA)
+#define RESOURCE_INSTANCE_COUNT (NUMBER_OF_OBJ_FIELDS)
+#else
 /* Account for extra instances created by multi-instance resources 31..34. */
 #define RESOURCE_INSTANCE_COUNT (NUMBER_OF_OBJ_FIELDS + (4 * (EM_CUSTOM_DIM_MAX - 1)))
+#endif
 static struct lwm2m_engine_obj_inst inst[MAX_INSTANCE_COUNT];
 static struct lwm2m_engine_res res[MAX_INSTANCE_COUNT][NUMBER_OF_OBJ_FIELDS];
 static struct lwm2m_engine_res_inst res_inst[MAX_INSTANCE_COUNT][RESOURCE_INSTANCE_COUNT];
@@ -244,7 +248,8 @@ static struct lwm2m_engine_obj_inst *em_create(uint16_t obj_inst_id)
                     &reactive_power[index], sizeof(reactive_power[index]));
     INIT_OBJ_RES_DATA(UCIFI_EM_REACTIVE_ENERGY_RID, res[index], i, res_inst[index], j,
                     &reactive_energy[index], sizeof(reactive_energy[index]));
-    /* Multi-instance optional resources 31..34: pre-allocate entries, not created yet */
+    /* Multi-instance optional resources 31..34 add frame and RAM overhead. */
+#if !defined(CONFIG_APP_CONNECTIVITY_LORA)
     INIT_OBJ_RES_MULTI_DATA_LEN(UCIFI_EM_LOW_POWER_THRESHOLD_CUSTOM_DIM_RID, res[index], i, res_inst[index], j,
                     EM_CUSTOM_DIM_MAX, false, low_power_threshold_custom_dim[index], sizeof(double), sizeof(double));
     INIT_OBJ_RES_MULTI_DATA_LEN(UCIFI_EM_HIGH_POWER_THRESHOLD_CUSTOM_DIM_RID, res[index], i, res_inst[index], j,
@@ -253,6 +258,7 @@ static struct lwm2m_engine_obj_inst *em_create(uint16_t obj_inst_id)
                     EM_CUSTOM_DIM_MAX, false, custom_dim_level_min[index], sizeof(int32_t), sizeof(int32_t));
     INIT_OBJ_RES_MULTI_DATA_LEN(UCIFI_EM_CUSTOM_DIM_LEVEL_MAX_RID, res[index], i, res_inst[index], j,
                     EM_CUSTOM_DIM_MAX, false, custom_dim_level_max[index], sizeof(int32_t), sizeof(int32_t));
+#endif
     INIT_OBJ_RES_DATA(UCIFI_EM_DIMMING_LEVEL_RID, res[index], i, res_inst[index], j,
                     &dimming_level[index], sizeof(dimming_level[index]));
     INIT_OBJ_RES_DATA(UCIFI_EM_APPARENT_ENERGY_RID, res[index], i, res_inst[index], j,

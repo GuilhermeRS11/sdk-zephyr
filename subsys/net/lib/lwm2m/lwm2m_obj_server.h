@@ -37,6 +37,11 @@
 #define SERVER_SMS_TRIGGER_ID				21
 #define SERVER_PREFERRED_TRANSPORT_ID			22
 #define SERVER_MUTE_SEND_ID				23
+/* Server object version 1.2 resource IDs */
+#define SERVER_ALTERNATE_APN_LINKS_ID			24
+#define SERVER_SUPPORTED_SERVER_VERSIONS_ID		25
+#define SERVER_DEFAULT_NOTIFICATION_MODE_ID		26
+#define SERVER_PROFILE_ID_HASH_ALGORITHM_ID		27
 
 /**
  * @brief Returns the default minimum period for an observation set for the server

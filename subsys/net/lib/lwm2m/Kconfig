@@ -274,10 +274,10 @@ config LWM2M_ENGINE_MAX_MESSAGES
 config LWM2M_COAP_BLOCK_SIZE
 	int "LWM2M CoAP block-wise transfer size"
 	default 512
-	range 64 1024
+	range 32 1024
 	help
 	  CoAP block size used by LwM2M when performing block-wise
-	  transfers. Possible values: 64, 128, 256, 512 and 1024.
+	  transfers. Possible values: 32, 64, 128, 256, 512 and 1024.
 	  When adjusting the value, ensure that LWM2M_COAP_MAX_MSG_SIZE is large enough
 	  to fit all CoAP headers and full block size.
 

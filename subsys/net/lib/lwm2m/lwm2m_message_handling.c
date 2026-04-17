@@ -626,7 +626,7 @@ int lwm2m_init_message(struct lwm2m_message *msg)
 	}
 
 	if (msg->tkl == LWM2M_MSG_TOKEN_GENERATE_NEW) {
-		tokenlen = 8U;
+		tokenlen = IS_ENABLED(CONFIG_APP_CONNECTIVITY_LORA) ? 1U : 8U;
 		token = coap_next_token();
 	} else if (msg->token && msg->tkl != 0) {
 		tokenlen = msg->tkl;

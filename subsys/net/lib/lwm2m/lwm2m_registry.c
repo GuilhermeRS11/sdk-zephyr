@@ -1125,7 +1125,11 @@ void lwm2m_engine_get_queue_mode(char *queue)
 void lwm2m_engine_get_binding(char *binding)
 {
 	/* Defaults to UDP. */
-	strncpy(binding, "U", BINDING_OPT_MAX_LEN);
+	if (IS_ENABLED(CONFIG_APP_CONNECTIVITY_LORA)) {
+		strncpy(binding, "N", BINDING_OPT_MAX_LEN);
+	} else {
+		strncpy(binding, "U", BINDING_OPT_MAX_LEN);
+	}
 #if CONFIG_LWM2M_VERSION_1_0
 	/* In LwM2M 1.0 binding and queue mode are in same parameter */
 	char queue[QUEUE_OPT_MAX_LEN];
