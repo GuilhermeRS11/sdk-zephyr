@@ -876,6 +876,8 @@ static int sm_send_registration(bool send_obj_support_data,
 	char queue[CLIENT_QUEUE_LEN];
 	bool include_obj_support_data = send_obj_support_data &&
 		!IS_ENABLED(CONFIG_APP_CONNECTIVITY_LORA);
+	bool minimal_lora_registration = !sm_is_registered() &&
+		IS_ENABLED(CONFIG_APP_CONNECTIVITY_LORA);
 
 	msg = rd_get_message();
 	if (!msg) {
@@ -920,7 +922,7 @@ static int sm_send_registration(bool send_obj_support_data,
 		}
 	}
 
-	if (!sm_is_registered()) {
+	if (!sm_is_registered() && !minimal_lora_registration) {
 		snprintk(query_buffer, sizeof(query_buffer) - 1,
 			"lwm2m=%s", LWM2M_PROTOCOL_VERSION_STRING);
 		ret = coap_packet_append_option(
@@ -941,8 +943,9 @@ static int sm_send_registration(bool send_obj_support_data,
 	}
 
 	/* Send lifetime only if changed or on initial registration.*/
-	if (sm_update_lifetime(client.ctx->srv_obj_inst, &client.lifetime) ||
-	    !sm_is_registered()) {
+	if (!minimal_lora_registration &&
+	    (sm_update_lifetime(client.ctx->srv_obj_inst, &client.lifetime) ||
+	     !sm_is_registered())) {
 		snprintk(query_buffer, sizeof(query_buffer) - 1,
 			 "lt=%d", client.lifetime);
 		ret = coap_packet_append_option(
@@ -956,7 +959,8 @@ static int sm_send_registration(bool send_obj_support_data,
 	lwm2m_engine_get_binding(binding);
 	lwm2m_engine_get_queue_mode(queue);
 	/* UDP is a default binding, no need to add option if UDP without queue is used. */
-	if ((!sm_is_registered() && (strcmp(binding, "U") != 0 || strcmp(queue, "Q") == 0))) {
+	if (!minimal_lora_registration &&
+	    (!sm_is_registered() && (strcmp(binding, "U") != 0 || strcmp(queue, "Q") == 0))) {
 		snprintk(query_buffer, sizeof(query_buffer) - 1,
 			 "b=%s", binding);
 
@@ -980,6 +984,10 @@ static int sm_send_registration(bool send_obj_support_data,
 			}
 		}
 #endif
+	}
+
+	if (minimal_lora_registration) {
+		LOG_DBG("LoRa initial registration uses minimal rd message; gateway completes query/object data");
 	}
 
 	if (include_obj_support_data) {
